@@ -174,6 +174,22 @@ class DoublyConnectedEdgeList:
         # or inner components have merged
         self._fix_inner_components(half_edge_0, half_edge_1, face_0, face_1)
 
+    def remove_edge(self, edge: HalfEdge):
+        """ Removes the given edge and its twin from the DCEL. """
+        if edge.incident_face != edge.twin.incident_face:
+            if not edge.twin.incident_face.is_outer:
+                edge.twin.update_face_in_cycle(edge.incident_face)
+                self._faces.remove(edge.twin.incident_face)
+            else:
+                edge.update_face_in_cycle(edge.twin.incident_face)
+                self._faces.remove(edge.incident_face)
+        edge.prev._set_next(edge.twin.next)
+        edge.next._set_prev(edge.twin.prev)
+        self._edges.remove(edge)  # TODO: Do these take too much time?
+        self._edges.remove(edge.twin)
+        
+
+
     def clear(self):
         """ Clears the DCEL """
         self._start_vertex: Optional[Vertex] = None
