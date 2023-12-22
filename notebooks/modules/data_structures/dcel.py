@@ -86,7 +86,7 @@ class DoublyConnectedEdgeList:
         self._add_edge(vertex_0, vertex_1)
 
 
-    def _add_edge(self, vertex_0: Vertex, vertex_1: Vertex):
+    def _add_edge(self, vertex_0: Vertex, vertex_1: Vertex, return_edge: bool = False):
         half_edge_0 = None
         half_edge_1 = None
         if vertex_0.edge == vertex_0.edge.twin:  # single vertex
@@ -174,17 +174,24 @@ class DoublyConnectedEdgeList:
         # or inner components have merged
         self._fix_inner_components(half_edge_0, half_edge_1, face_0, face_1)
 
+        if return_edge:
+            return half_edge_0
+
     def remove_edge(self, edge: HalfEdge):
         """ Removes the given edge and its twin from the DCEL. """
+        if edge.origin.edge is edge:
+            edge.origin._edge = edge.twin.next
+        if edge.twin.origin.edge is edge.twin:
+            edge.twin.origin._edge = edge.next
         if edge.incident_face != edge.twin.incident_face:
             if not edge.twin.incident_face.is_outer:
-                edge.twin.update_face_in_cycle(edge.incident_face)
                 self._faces.remove(edge.twin.incident_face)
+                edge.twin.update_face_in_cycle(edge.incident_face)
             else:
-                edge.update_face_in_cycle(edge.twin.incident_face)
                 self._faces.remove(edge.incident_face)
-        edge.prev._set_next(edge.twin.next)
+                edge.update_face_in_cycle(edge.twin.incident_face)
         edge.next._set_prev(edge.twin.prev)
+        edge.prev._set_next(edge.twin.next)
         self._edges.remove(edge)  # TODO: Do these take too much time?
         self._edges.remove(edge.twin)
         
