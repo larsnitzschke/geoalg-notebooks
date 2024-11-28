@@ -56,6 +56,16 @@ class CanvasDrawingHandle:
         if transparent:
             self._canvas.fill_style = self.opaque_style
 
+    def draw_disk(self, center_point: Point, point_radius: int, disk_radius: int, transparent: bool = False):
+        if disk_radius <= 0:
+            return
+        if transparent:
+            self._canvas.fill_style = self.transparent_style
+        self.draw_point(center_point, point_radius, transparent)
+        self._canvas.stroke_circle(center_point.x, center_point.y, disk_radius)
+        if transparent:
+            self._canvas.fill_style = self.opaque_style
+
     def draw_path(self, points: Iterable[Point], line_width: int, close: bool = False, stroke: bool = True,
     fill: bool = False, transparent: bool = False):
         points_iterator = iter(points)
@@ -173,6 +183,30 @@ class PointsMode(DrawingMode):
 
         drawer.clear()
         self.draw(drawer, points)
+
+
+class DiskMode(PointsMode):
+    def __init__(self, point_radius: int = DEFAULT_POINT_RADIUS, highlight_radius: int = DEFAULT_HIGHLIGHT_RADIUS, line_width: int = DEFAULT_LINE_WIDTH) -> None:
+        self._line_width = line_width
+        super().__init__(point_radius, highlight_radius)
+
+    def draw(self, drawer: Drawer, points: Iterable[Point]):
+        with drawer.main_canvas.hold():
+            for point in points:
+                if not isinstance(point, PointReference) or len(point.container) == 1:
+                    drawer.main_canvas.draw_point(point, self._vertex_radius)
+                elif len(point.container) != 2 or point.position != 0 or point.y != point.container[1].y:
+                    raise Exception(f"Wrong format of the PointReference {point} for drawing disks.")
+                else:
+                    drawer.main_canvas.draw_disk(point, self._point_radius, abs(point.x - point.container[1].x))
+    
+    def _draw_animation_step(self, drawer: Drawer, points: list[Point]):
+        with drawer.main_canvas.hold():
+            drawer.main_canvas.clear()
+            if points:
+                for point in points[:-1]:
+                    drawer.main_canvas.draw_disk(point, self._point_radius, abs(point.x - point.container[1].x))
+                drawer.main_canvas.draw_disk(points[-1], self._highlight_radius, abs(point.x - point.container[1].x), transparent = True)
 
 
 class SweepLineMode(PointsMode):

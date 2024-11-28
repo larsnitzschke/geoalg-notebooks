@@ -3,9 +3,9 @@ from itertools import chain
 import time
 from typing import Callable, Generic, Optional, TypeVar, Union
 
-from ..geometry.core import GeometricObject, LineSegment, Point, PointReference
+from ..geometry.core import GeometricObject, LineSegment, Point, PointReference, Disk
 from ..data_structures import DoublyConnectedSimplePolygon, DoublyConnectedEdgeList, PointLocation
-from .drawing import DrawingMode, LineSegmentsMode, PointsMode, PolygonMode, DCELMode
+from .drawing import DrawingMode, LineSegmentsMode, PointsMode, PolygonMode, DCELMode, DiskMode
 
 import numpy as np
 
@@ -110,6 +110,50 @@ class PointSetInstance(InstanceHandle[set[Point]]):
         x_values = np.clip(np.random.normal(0.5 * max_x, 0.15 * max_x, number), 0.05 * max_x, 0.95 * max_x)
         y_values = np.clip(np.random.normal(0.5 * max_y, 0.15 * max_y, number), 0.05 * max_y, 0.95 * max_y)
         return [Point(x, y) for x, y in zip(x_values, y_values)]
+    
+class DiskSetInstance(InstanceHandle[set[Disk]]):
+    def __init__(self, drawing_mode: Optional[DrawingMode] = None):
+        if drawing_mode is None:
+            drawing_mode = DiskMode()
+        super().__init__(set(), drawing_mode)
+        self._center_point_cache = None
+
+    def add_point(self, point: Point) -> bool:
+        if self._center_point_cache is None:
+            self._center_point_cache = point
+            return True
+        elif self._center_point_cache == point:
+            return False
+        
+        radius = self._center_point_cache.distance(point)
+        disk = Disk(self._center_point_cache, radius)
+        if disk in self._instance:
+            return False
+        self._instance.add(disk)
+        self._center_point_cache = None
+        
+        return True
+
+    def clear(self):
+        self._instance.clear()
+
+    def size(self) -> int:
+        return len(self._instance)
+
+    @staticmethod
+    def extract_points_from_raw_instance(instance: set[Disk]) -> list[PointReference]:
+        return [PointReference([disk.center_point, Point(disk.center_point.x + disk.radius, disk.center_point.y)], 0) for disk in instance]
+
+    @property
+    def default_number_of_random_points(self) -> int:
+        return 10
+
+    def generate_random_points(self, max_x: float, max_y: float, number: int) -> list[Point]:
+        disks: set[Disk] = set()
+        for point in super().generate_random_points(0.9 * max_x, 0.9 * max_y, number):
+            radius = np.random.uniform(0.02 * max_x, 0.1 * max_x)
+            disks.add(Disk(point, radius))
+        return DiskSetInstance.extract_points_from_raw_instance(disks)
 
 
 class LineSegmentSetInstance(InstanceHandle[set[LineSegment]]):

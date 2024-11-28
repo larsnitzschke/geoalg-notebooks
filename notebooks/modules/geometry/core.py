@@ -45,7 +45,7 @@ class Point:
     def copy(self) -> Point:
         return Point(self._x, self._y)
 
-    def as_tuple(self) -> tuple[SupportsFloat, SupportsFloat]:
+    def as_tuple(self) -> tuple[float, float]:
         return (self._x, self._y)
 
     ## Properties
