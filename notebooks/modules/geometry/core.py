@@ -45,6 +45,9 @@ class Point:
     def copy(self) -> Point:
         return Point(self._x, self._y)
 
+    def as_tuple(self) -> tuple[SupportsFloat, SupportsFloat]:
+        return (self._x, self._y)
+
     ## Properties
 
     @property
@@ -324,6 +327,11 @@ class Rectangle:
     def lower(self):
         return self._lower
     
+
+class Disk:
+    def __init__(self, center_point: Point, radius: SupportsFloat):
+        self.center_point: Point = center_point
+        self.radius: SupportsFloat = radius
 
 class AnimationEvent(ABC):      # TODO: Maybe use an Enum instead...
     @abstractmethod
