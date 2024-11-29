@@ -80,8 +80,8 @@ class ComponentTree:
             current_node: ComponentTreeNode = largest_component_leaf
             while current_node._parent is not None:
                 current_node = current_node._parent
-                for disk in largest_component_leaf._component:
-                    current_node._awnn.add(disk, disk.center_point.as_tuple())
+                #for disk in largest_component_leaf._component:
+                current_node._awnn.add(disk, disk.center_point.as_tuple())
 
             # if more than one intersected component: clean-up step
             if len(intersected_component_leafs) > 1:
@@ -89,6 +89,8 @@ class ComponentTree:
                 for component_node in intersected_component_leafs:
                     if component_node is largest_component_leaf:
                         continue
+                    for site in component_node._component:
+                        largest_component_leaf._component.append(site)
                     # Start with both nodes (largest component and the other intersected one)
                     # they are always at the same level, as we start at leafs of a full tree.
                     node_l, node_o = largest_component_leaf, component_node
@@ -97,10 +99,15 @@ class ComponentTree:
                         for component_disk in component_node._component:
                             node_l._awnn.add(component_disk, component_disk.center_point.as_tuple())
                             node_o._awnn.delete(component_disk)
+                        node_l = node_l._parent
+                        node_o = node_o._parent
 
                     # empty the other node
                     component_node._component = None
                     self._leafQueue.append(component_node)
+
+    def verify_tree(self):
+        self._root.verify_node()
 
 
 class ComponentTreeNode:
@@ -129,12 +136,48 @@ class ComponentTreeNode:
                 raise AssertionError("Something in the code is wrong")
             return [self]
         intersected: list[ComponentTreeNode] = []
-        left_nearest = self._left._awnn.nearest_neighbors(disk.center_point.as_tuple())[0]
-        if disk.center_point.distance(left_nearest.item.center_point) <= disk.radius + left_nearest.item.radius:
+        left_nearest = self._left._awnn.nearest_neighbors(disk.center_point.as_tuple())
+        left_nearest = left_nearest[0] if left_nearest != [] else None
+        if left_nearest is not None and disk.center_point.distance(left_nearest.item.center_point) <= disk.radius + left_nearest.item.radius:
             # If result not empty recurse into the child.
             intersected.extend(self._left.query_intersected(disk))  #  TODO: is extend efficient?
-        right_nearest = self._right._awnn.nearest_neighbors(disk.center_point.as_tuple())[0]
-        if disk.center_point.distance(right_nearest.item.center_point) <= disk.radius + right_nearest.item.radius:
+        right_nearest = self._right._awnn.nearest_neighbors(disk.center_point.as_tuple())
+        right_nearest = right_nearest[0] if right_nearest != [] else None
+        if right_nearest is not None and disk.center_point.distance(right_nearest.item.center_point) <= disk.radius + right_nearest.item.radius:
             intersected.extend(self._right.query_intersected(disk))
 
         return intersected
+    
+    def verify_node(self):
+        if self._level > 0:
+            if self._left is None or self._right is None:
+                raise AssertionError("Non-leaf node without children")
+            if self._component is not None:
+                raise AssertionError("Non-leaf node with component")
+            if self._left._level != self._level - 1:
+                raise AssertionError("Left child has wrong level")
+            if self._right._level != self._level - 1:
+                raise AssertionError("Right child has wrong level")
+            for site in self._left._awnn.get_all_elements():
+                if site not in self._awnn.get_all_elements():
+                    raise AssertionError("Left child contains site not in parent")
+            for site in self._right._awnn.get_all_elements():
+                if site not in self._awnn.get_all_elements():
+                    raise AssertionError("Right child contains site not in parent")
+            if len(self._left._awnn.get_all_elements()) + len(self._right._awnn.get_all_elements()) != len(self._awnn.get_all_elements()):
+                raise AssertionError("Child awnns do not match parent")
+            self._left.verify_node()
+            self._right.verify_node()
+        elif self._level < 0:
+            raise AssertionError("Negative level")
+        else:  # level == 0
+            if self._left is not None or self._right is not None:
+                raise AssertionError("Leaf node with children")
+            if self._component is None and self._awnn.get_all_elements() != []:
+                raise AssertionError("Non-empty leaf node without component")
+            if self._component is not None and len(self._component) != len(self._awnn.get_all_elements()):
+                raise AssertionError("Leaf node component and awnn do not match")
+            for site in self._awnn.get_all_elements():
+                if site.item not in self._component:
+                    raise AssertionError("Leaf node contains site not in component")
+        

@@ -1,19 +1,23 @@
-class DisjointSet:
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class DisjointSet(Generic[T]):
     def __init__(self):
         self.parent = {}
         self.rank = {}
 
-    def make_set(self, x):
+    def make_set(self, x: T):
         if x not in self.parent:
             self.parent[x] = x
             self.rank[x] = 0
 
-    def find(self, x):
+    def find(self, x: T) -> T:
         if x != self.parent[x]:
             self.parent[x] = self.find(self.parent[x])  # Path compression
         return self.parent[x]
 
-    def union(self, x, y):
+    def union(self, x: T, y: T):
         if x not in self.parent:  # Efficient, as python dicts are hash tables
             self.make_set(x)
         if y not in self.parent:
@@ -28,4 +32,10 @@ class DisjointSet:
             else:  # >=
                 self.parent[rep_y] = rep_x
             if self.rank[rep_x] == self.rank[rep_y]:
-                self.rank[rep_y] += 1
+                self.rank[rep_x] += 1
+
+    def contains(self, x: T) -> bool:
+        return x in self.parent
+    
+    def in_same_set(self, x: T, y: T) -> bool:
+        return self.find(x) == self.find(y)

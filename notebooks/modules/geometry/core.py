@@ -331,7 +331,20 @@ class Rectangle:
 class Disk:
     def __init__(self, center_point: Point, radius: SupportsFloat):
         self.center_point: Point = center_point
-        self.radius: SupportsFloat = radius
+        self.radius: float = radius
+
+    def intersects(self, other_disk: Disk, epsilon: float = EPSILON) -> bool:
+        return self.center_point.distance(other_disk.center_point) <= self.radius + other_disk.radius + epsilon
+    
+    def contains(self, point: Point, epsilon: float = EPSILON) -> bool:
+        return self.center_point.distance(point) <= self.radius + epsilon
+    
+    @property
+    def diameter(self) -> float:
+        return 2 * self.radius
+    
+    def __repr__(self) -> str:
+        return f"({self.center_point} -r- {self.radius})"  
 
 class AnimationEvent(ABC):      # TODO: Maybe use an Enum instead...
     @abstractmethod

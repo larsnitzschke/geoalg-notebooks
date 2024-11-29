@@ -118,24 +118,31 @@ class DiskSetInstance(InstanceHandle[set[Disk]]):
         super().__init__(set(), drawing_mode)
         self._center_point_cache = None
 
-    def add_point(self, point: Point) -> bool:
+    def add_point(self, point: Point) -> bool | tuple[bool, PointReference]:
+        if isinstance(point, PointReference):
+            if len(point.container) != 2 or point.position != 0 or point.y != point.container[1].y:
+                raise Exception(f"Wrong format of the PointReference {point} for adding disks.")
+            self._instance.add(Disk(point.container[0], abs(point.container[0].x - point.container[1].x)))
+            return True
+        # isinstance: Point
         if self._center_point_cache is None:
             self._center_point_cache = point
             return True
         elif self._center_point_cache == point:
             return False
-        
+
         radius = self._center_point_cache.distance(point)
         disk = Disk(self._center_point_cache, radius)
+        point_ref = PointReference([self._center_point_cache, Point(self._center_point_cache.x + radius, self._center_point_cache.y)], 0)
         if disk in self._instance:
             return False
         self._instance.add(disk)
         self._center_point_cache = None
-        
-        return True
+        return False, point_ref
 
     def clear(self):
         self._instance.clear()
+        self._center_point_cache = None
 
     def size(self) -> int:
         return len(self._instance)
@@ -152,6 +159,7 @@ class DiskSetInstance(InstanceHandle[set[Disk]]):
         disks: set[Disk] = set()
         for point in super().generate_random_points(0.9 * max_x, 0.9 * max_y, number):
             radius = np.random.uniform(0.02 * max_x, 0.1 * max_x)
+            radius = 40
             disks.add(Disk(point, radius))
         return DiskSetInstance.extract_points_from_raw_instance(disks)
 
@@ -257,7 +265,7 @@ class DCELInstance(InstanceHandle[DoublyConnectedEdgeList]):
         self._dcel = self._instance  # This is so that that DCELInstance can be used by the PointLocationInstance where the dcel is not the instance itself
         super().__init__(DoublyConnectedEdgeList(), drawing_mode)
 
-    def add_point(self, point: Point) -> bool:
+    def add_point(self, point: Point) -> tuple[bool, PointReference]:
         # Check if point is already in the DCEL
         is_new_point = True
         for instance_point in self._dcel.points:
