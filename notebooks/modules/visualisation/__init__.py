@@ -5,6 +5,6 @@ from .drawing import (
 )
 from .instances import (
     PointSetInstance, LineSegmentSetInstance, SimplePolygonInstance, DCELInstance,
-    PointLocationInstance, DiskSetInstance
+    PointLocationInstance, DiskSetInstance, DiskConnectivityInstance
 )
 from .tool import VisualisationTool

@@ -6,5 +6,5 @@ from .dcel import DoublyConnectedEdgeList
 from .objects import HalfEdge, Vertex, Face
 from .triangulation import monotone_triangulation, recursive_triangulation
 from .vertical_decomposition import PointLocation, VDLineSegment, PLSearchStructure
-from .component_tree import ComponentTree
+from .component_tree import ComponentTree, DiskConnectivity
 from .disjoint_set import DisjointSet

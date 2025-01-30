@@ -93,6 +93,14 @@ class CanvasDrawingHandle:
             self._canvas.stroke_style = self.opaque_style
             self._canvas.fill_style  = self.opaque_style
 
+    def draw_text(self, position: Point, text: str, transparent: bool = False):
+        self._canvas.font = "16px sans-serif"
+        if transparent:
+            self._canvas.fill_style = self.transparent_style
+        self._canvas.fill_text(text, position.x, position.y)
+        if transparent:
+            self._canvas.fill_style = self.opaque_style
+
     def draw_polygon(self, points: Iterable[Point], line_width: int, stroke: bool = True,
     fill: bool = False, transparent: bool = False):
         self.draw_path(points, line_width, close = True, stroke = stroke, fill = fill, transparent = transparent)
@@ -193,13 +201,24 @@ class DiskMode(PointsMode):
 
     def draw(self, drawer: Drawer, points: Iterable[Point]):
         with drawer.main_canvas.hold():
+            drawer.main_canvas._canvas.font = "16px sans-serif"
             for point in points:
                 if not isinstance(point, PointReference) or len(point.container) == 1:
                     drawer.main_canvas.draw_point(point, self._point_radius)
+                    drawer.main_canvas._canvas.save()
+                    drawer.main_canvas._canvas.translate(point.x+2, point.y-14)
+                    drawer.main_canvas._canvas.scale(1, -1)
+                    drawer.main_canvas._canvas.fill_text(point.label, 0, 0)
+                    drawer.main_canvas._canvas.restore()
                 elif len(point.container) != 2 or point.position != 0 or point.y != point.container[1].y:
                     raise Exception(f"Wrong format of the PointReference {point} for drawing disks.")
                 else:
                     drawer.main_canvas.draw_disk(point, self._point_radius, abs(point.x - point.container[1].x), self._line_width)
+                    drawer.main_canvas._canvas.save()
+                    drawer.main_canvas._canvas.translate(point.x+2, point.y-14)
+                    drawer.main_canvas._canvas.scale(1, -1)
+                    drawer.main_canvas._canvas.fill_text(point.label, 0, 0)
+                    drawer.main_canvas._canvas.restore()
     
     def _draw_animation_step(self, drawer: Drawer, points: list[Point]):
         with drawer.main_canvas.hold():

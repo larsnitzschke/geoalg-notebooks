@@ -38,9 +38,10 @@ class GeometricObject(ABC):     # TODO: Rename, move and export this.
 
 
 class Point:
-    def __init__(self, x: SupportsFloat, y: SupportsFloat):
+    def __init__(self, x: SupportsFloat, y: SupportsFloat, label = -1):
         self._x = float(x)
         self._y = float(y)
+        self.label = label
 
     def copy(self) -> Point:
         return Point(self._x, self._y)
@@ -162,9 +163,10 @@ class Point:
 
 
 class PointReference(Point):    # TODO: Make this a generic type for points with attributes.
-    def __init__(self, container: list[Point], position: int):
+    def __init__(self, container: list[Point], position: int, label = -1):
         self._container = container
         self._position = position
+        self.label = label
 
     def copy(self) -> PointReference:
         return PointReference([point.copy() for point in self.container], self._position)
@@ -329,9 +331,10 @@ class Rectangle:
     
 
 class Disk:
-    def __init__(self, center_point: Point, radius: SupportsFloat):
+    def __init__(self, center_point: Point, radius: SupportsFloat, label = -1):
         self.center_point: Point = center_point
         self.radius: float = radius
+        self.label = label
 
     def intersects(self, other_disk: Disk, epsilon: float = EPSILON) -> bool:
         return self.center_point.distance(other_disk.center_point) <= self.radius + other_disk.radius + epsilon
@@ -344,7 +347,8 @@ class Disk:
         return 2 * self.radius
     
     def __repr__(self) -> str:
-        return f"({self.center_point} -r- {self.radius})"  
+        return f"Disk {self.label}"
+        # return f"({self.center_point} -r- {self.radius})"  
 
 class AnimationEvent(ABC):      # TODO: Maybe use an Enum instead...
     @abstractmethod

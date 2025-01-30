@@ -96,6 +96,9 @@ class VisualisationTool(Generic[I]):
         self._init_random_ui()
         self._init_animation_ui()
 
+        self._tree_ui_1 = HTML()
+        self._tree_ui_2 = HTML()
+
     def _init_random_ui(self):
         self._random_number_int_text = BoundedIntText(
             value = self._instance.default_number_of_random_points,
@@ -178,7 +181,7 @@ class VisualisationTool(Generic[I]):
         ], layout = ui_grid_layout)
 
         display(HBox(
-            [VBox([self._canvas_output, self._instance_size_info]), ui_grid],
+            [VBox([self._canvas_output, self._instance_size_info]), self._tree_ui_1, self._tree_ui_2, ui_grid],
             layout = Layout(justify_content = "space-around")
         ))
 

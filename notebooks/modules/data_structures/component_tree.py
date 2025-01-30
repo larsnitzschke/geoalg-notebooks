@@ -1,8 +1,23 @@
 from typing import Optional
 from ..geometry import Disk
 from pyquadtree import QuadTree
+from .disjoint_set import DisjointSet
 
 Component = list[Disk]
+
+class DiskConnectivity:
+    def __init__(self):
+        self._disk_set: set[Disk] = set()
+        self._disjoint_set = DisjointSet[Disk]()
+        self._component_tree = ComponentTree()
+        self._excluded_disk = None
+
+    def clear(self):
+        self._disk_set.clear()
+        self._disjoint_set = DisjointSet[Disk]()
+        self._component_tree = ComponentTree()
+        self._excluded_disk = None
+
 
 class ComponentTree:
     def __init__(self):
@@ -109,6 +124,12 @@ class ComponentTree:
     def verify_tree(self):
         self._root.verify_node()
 
+    def __repr__(self) -> str:
+        return self._root.str_rep(dashes = self._root._level)
+    
+    def html(self) -> str:
+        return str(self).replace("\n", "<br>")
+
 
 class ComponentTreeNode:
     def __init__(self):
@@ -180,4 +201,10 @@ class ComponentTreeNode:
             for site in self._awnn.get_all_elements():
                 if site.item not in self._component:
                     raise AssertionError("Leaf node contains site not in component")
+                
+    def str_rep(self, dashes) -> str:
+        if self.is_leaf():
+            return "_" * (dashes - self._level)*4 + f"Leaf: {self._component}"
+        else:
+            return "_" * (dashes - self._level)*4 + f"{dashes - self._level}-Node: \n {self._left.str_rep(dashes)} \n {self._right.str_rep(dashes)}"
         

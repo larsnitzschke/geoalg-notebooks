@@ -4,7 +4,7 @@ import time
 from typing import Callable, Generic, Optional, TypeVar, Union
 
 from ..geometry.core import GeometricObject, LineSegment, Point, PointReference, Disk
-from ..data_structures import DoublyConnectedSimplePolygon, DoublyConnectedEdgeList, PointLocation
+from ..data_structures import DoublyConnectedSimplePolygon, DoublyConnectedEdgeList, PointLocation, DiskConnectivity
 from .drawing import DrawingMode, LineSegmentsMode, PointsMode, PolygonMode, DCELMode, DiskMode
 
 import numpy as np
@@ -116,40 +116,47 @@ class DiskSetInstance(InstanceHandle[set[Disk]]):
         if drawing_mode is None:
             drawing_mode = DiskMode()
         super().__init__(set(), drawing_mode)
+        self._disk_set = self._instance
         self._center_point_cache = None
+        self._label = 0
+        self._radius = 30
 
     def add_point(self, point: Point) -> bool | tuple[bool, PointReference]:
         if isinstance(point, PointReference):
             if len(point.container) != 2 or point.position != 0 or point.y != point.container[1].y:
                 raise Exception(f"Wrong format of the PointReference {point} for adding disks.")
-            self._instance.add(Disk(point.container[0], abs(point.container[0].x - point.container[1].x)))
+            self._disk_set.add(Disk(point.container[0], abs(point.container[0].x - point.container[1].x), point.label))
+            self._label += 1
             return True
         # isinstance: Point
-        if self._center_point_cache is None:
+        if self._center_point_cache is None and self._radius is None:
             self._center_point_cache = point
             return True
         elif self._center_point_cache == point:
             return False
-
-        radius = self._center_point_cache.distance(point)
-        disk = Disk(self._center_point_cache, radius)
-        point_ref = PointReference([self._center_point_cache, Point(self._center_point_cache.x + radius, self._center_point_cache.y)], 0)
-        if disk in self._instance:
+        # center point is present and not the same as the new point
+        radius = self._center_point_cache.distance(point) if self._radius is None else self._radius
+        self._center_point_cache = self._center_point_cache if self._radius is None else point
+        disk = Disk(self._center_point_cache, radius, self._label)
+        point_ref = PointReference([self._center_point_cache, Point(self._center_point_cache.x + radius, self._center_point_cache.y)], 0, self._label)
+        self._label += 1
+        if disk in self._disk_set:
             return False
-        self._instance.add(disk)
+        self._disk_set.add(disk)
         self._center_point_cache = None
         return False, point_ref
 
     def clear(self):
         self._instance.clear()
         self._center_point_cache = None
+        self._label = 0
 
     def size(self) -> int:
-        return len(self._instance)
+        return len(self._disk_set)
 
     @staticmethod
     def extract_points_from_raw_instance(instance: set[Disk]) -> list[PointReference]:
-        return [PointReference([disk.center_point, Point(disk.center_point.x + disk.radius, disk.center_point.y)], 0) for disk in instance]
+        return [PointReference([disk.center_point, Point(disk.center_point.x + disk.radius, disk.center_point.y)], 0, disk.label) for disk in instance]
 
     @property
     def default_number_of_random_points(self) -> int:
@@ -158,9 +165,10 @@ class DiskSetInstance(InstanceHandle[set[Disk]]):
     def generate_random_points(self, max_x: float, max_y: float, number: int) -> list[Point]:
         disks: set[Disk] = set()
         for point in super().generate_random_points(0.9 * max_x, 0.9 * max_y, number):
-            radius = np.random.uniform(0.02 * max_x, 0.1 * max_x)
-            radius = 40
-            disks.add(Disk(point, radius))
+            # radius = np.random.uniform(0.02 * max_x, 0.1 * max_x)
+            radius = 30 if self._radius is None else self._radius
+            disks.add(Disk(point, radius, self._label))
+            self._label += 1
         return DiskSetInstance.extract_points_from_raw_instance(disks)
 
 
@@ -397,3 +405,19 @@ class PointLocationInstance(DCELInstance, InstanceHandle[PointLocation]):
             return DCELInstance.extract_points_from_raw_instance(instance)
         else:
             return DCELInstance.extract_points_from_raw_instance(instance._dcel)
+        
+class DiskConnectivityInstance(DiskSetInstance, InstanceHandle[DiskConnectivity]):
+    def __init__(self, drawing_mode: Optional[DrawingMode] = None):
+        if drawing_mode is None:
+            drawing_mode = DiskMode()
+        super().__init__(drawing_mode)
+        self._instance = DiskConnectivity()
+        self._disk_set = self._instance._disk_set
+
+    @staticmethod
+    def extract_points_from_raw_instance(instance: Union[set[Disk], DiskConnectivity]) -> list[PointReference]:
+        if isinstance(instance, set):
+            return DiskSetInstance.extract_points_from_raw_instance(instance)
+        else:
+            return DiskSetInstance.extract_points_from_raw_instance(instance._disk_set)
+        
