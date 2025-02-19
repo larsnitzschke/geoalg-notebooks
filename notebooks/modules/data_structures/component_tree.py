@@ -1,7 +1,9 @@
+from abc import ABC
 from typing import Optional
 from ..geometry import Disk
 from pyquadtree import QuadTree
 from .disjoint_set import DisjointSet
+import math
 
 Component = list[Disk]
 
@@ -70,11 +72,7 @@ class ComponentTree:
 
     def query_nodes(self, disk: Disk):
         # Query root
-        nearest = self._root._awnn.nearest_neighbors(disk.center_point.as_tuple())
-        if len(nearest) == 0:
-            return []  # No intersected components
-        nearest = nearest[0]
-        if disk.center_point.distance(nearest.item.center_point) > disk.radius + nearest.item.radius:
+        if not self._root._awnn.query_disk_intersection(disk):
             return []  # No intersected components
         return self._root.query_intersected(disk)
 
@@ -134,7 +132,8 @@ class ComponentTree:
 class ComponentTreeNode:
     def __init__(self):
         self._component: Optional[list[Disk]] = None
-        self._awnn = QuadTree(bbox=(0, 0, 1000, 1000))
+        self._awnn: AWNN = QuadTreeUnitAWNN(bbox=(0, 0, 400, 400))
+        self._awnn = MockupGeneralAWNN(bbox=(0, 0, 400, 400))
         self._left: Optional[ComponentTreeNode] = None
         self._right: Optional[ComponentTreeNode] = None
         self._parent: Optional[ComponentTreeNode] = None
@@ -157,16 +156,11 @@ class ComponentTreeNode:
                 raise AssertionError("Something in the code is wrong")
             return [self]
         intersected: list[ComponentTreeNode] = []
-        left_nearest = self._left._awnn.nearest_neighbors(disk.center_point.as_tuple())
-        left_nearest = left_nearest[0] if left_nearest != [] else None
-        if left_nearest is not None and disk.center_point.distance(left_nearest.item.center_point) <= disk.radius + left_nearest.item.radius:
+        if self._left._awnn.query_disk_intersection(disk):
             # If result not empty recurse into the child.
-            intersected.extend(self._left.query_intersected(disk))  #  TODO: is extend efficient?
-        right_nearest = self._right._awnn.nearest_neighbors(disk.center_point.as_tuple())
-        right_nearest = right_nearest[0] if right_nearest != [] else None
-        if right_nearest is not None and disk.center_point.distance(right_nearest.item.center_point) <= disk.radius + right_nearest.item.radius:
+            intersected.extend(self._left.query_intersected(disk)) # TODO: is extend efficient?
+        if self._right._awnn.query_disk_intersection(disk):
             intersected.extend(self._right.query_intersected(disk))
-
         return intersected
     
     def verify_node(self):
@@ -208,3 +202,67 @@ class ComponentTreeNode:
         else:
             return "_" * (dashes - self._level)*4 + f"{dashes - self._level}-Node: \n {self._left.str_rep(dashes)} \n {self._right.str_rep(dashes)}"
         
+
+class AWNN(ABC):
+    def query_disk_intersection(self, disk: Disk):
+        pass
+
+    def add(self, item, point):
+        pass
+
+    def delete(self, item):
+        pass
+
+    def get_all_elements(self):
+        pass
+
+
+class QuadTreeUnitAWNN:
+    def __init__(self, bbox):
+        self._tree: QuadTree = QuadTree(bbox)
+
+    def query_disk_intersection(self, disk: Disk):
+        nearest = self._tree.nearest_neighbors(disk.center_point.as_tuple())
+        nearest = nearest[0] if nearest != [] else None
+        return nearest is not None and disk.center_point.distance(nearest.item.center_point) <= disk.radius + nearest.item.radius
+    
+    def add(self, item, point):
+        self._tree.add(item, point)
+
+    def delete(self, item):
+        self._tree.delete(item)
+
+    def get_all_elements(self):
+        return self._tree.get_all_elements()
+
+
+class MockupGeneralAWNN:
+    """
+    Mockup for a general AWNN data structure
+    Use multiple QuadTrees with different radii to store the elements.
+    """
+    def __init__(self, bbox, num_trees = 10):
+        self._intervals = [0, 1, 2, 4, 8, 16, 32, 64, 128, 256][:min(num_trees, 10)] + [400]
+        self._trees: list[QuadTree] = [QuadTree(bbox) for _ in range(num_trees)]
+
+    def query_disk_intersection(self, disk: Disk):
+        for i, tree in enumerate(self._trees):
+            result = tree.query((disk.center_point.x - disk.radius - self._intervals[i + 1],
+                                 disk.center_point.y - disk.radius - self._intervals[i + 1],
+                                 disk.center_point.x + disk.radius + self._intervals[i + 1],
+                                 disk.center_point.y + disk.radius + self._intervals[i + 1]))  # Could be improved if the quadtree finds the weighted nearest neighbor or returns the elements incrementally
+            for r in result:
+                if disk.center_point.distance(r.item.center_point) <= disk.radius + r.item.radius:
+                    return True
+        return False
+    
+    def add(self, item, point):
+        tree_index = min(len(self._intervals) - 1, int(math.log2(item.radius) + 1))
+        self._trees[tree_index].add(item, point)
+
+    def delete(self, item):
+        tree_index = min(len(self._intervals) - 1, int(math.log2(item.radius) + 1))
+        self._trees[tree_index].delete(item)
+
+    def get_all_elements(self):
+        return [element for tree in self._trees for element in tree.get_all_elements()]
