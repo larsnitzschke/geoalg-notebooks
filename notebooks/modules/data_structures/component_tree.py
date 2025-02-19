@@ -1,4 +1,5 @@
 from abc import ABC
+from enum import Enum
 from typing import Optional
 from ..geometry import Disk
 from pyquadtree import QuadTree
@@ -21,6 +22,69 @@ class DiskConnectivity:
         self._excluded_disk = None
 
 
+class AWNN(ABC):
+    def query_disk_intersection(self, disk: Disk):
+        pass
+
+    def add(self, item, point):
+        pass
+
+    def delete(self, item):
+        pass
+
+    def get_all_elements(self):
+        pass
+
+
+class QuadTreeUnitAWNN:
+    def __init__(self, bbox):
+        self._tree: QuadTree = QuadTree(bbox)
+
+    def query_disk_intersection(self, disk: Disk):
+        nearest = self._tree.nearest_neighbors(disk.center_point.as_tuple())
+        nearest = nearest[0] if nearest != [] else None
+        return nearest is not None and disk.center_point.distance(nearest.item.center_point) <= disk.radius + nearest.item.radius
+    
+    def add(self, item, point):
+        self._tree.add(item, point)
+
+    def delete(self, item):
+        self._tree.delete(item)
+
+    def get_all_elements(self):
+        return self._tree.get_all_elements()
+
+
+class MockupGeneralAWNN:
+    """
+    Mockup for a general AWNN data structure
+    Use multiple QuadTrees with different radii to store the elements.
+    """
+    def __init__(self, bbox, num_trees = 10):
+        self._intervals = [0, 1, 2, 4, 8, 16, 32, 64, 128, 256][:min(num_trees, 10)] + [400]
+        self._trees: list[QuadTree] = [QuadTree(bbox) for _ in range(num_trees)]
+
+    def query_disk_intersection(self, disk: Disk):
+        for i, tree in enumerate(self._trees):
+            result = tree.query((disk.center_point.x - disk.radius - self._intervals[i + 1],
+                                 disk.center_point.y - disk.radius - self._intervals[i + 1],
+                                 disk.center_point.x + disk.radius + self._intervals[i + 1],
+                                 disk.center_point.y + disk.radius + self._intervals[i + 1]))  # Could be improved if the quadtree finds the weighted nearest neighbor or returns the elements incrementally
+            for r in result:
+                if disk.center_point.distance(r.item.center_point) <= disk.radius + r.item.radius:
+                    return True
+        return False
+    
+    def add(self, item, point):
+        tree_index = min(len(self._intervals) - 1, int(math.log2(item.radius) + 1))
+        self._trees[tree_index].add(item, point)
+
+    def delete(self, item):
+        tree_index = min(len(self._intervals) - 1, int(math.log2(item.radius) + 1))
+        self._trees[tree_index].delete(item)
+
+    def get_all_elements(self):
+        return [element for tree in self._trees for element in tree.get_all_elements()]
 class ComponentTree:
     def __init__(self):
         self._root = ComponentTreeNode()
@@ -129,11 +193,16 @@ class ComponentTree:
         return str(self).replace("\n", "<br>")
 
 
+class AWNNType(Enum):
+    QuadTreeUnitAWNN = QuadTreeUnitAWNN
+    MockupGeneralAWNN = MockupGeneralAWNN
+
+
 class ComponentTreeNode:
+    awnn_type = AWNNType.QuadTreeUnitAWNN
     def __init__(self):
         self._component: Optional[list[Disk]] = None
-        self._awnn: AWNN = QuadTreeUnitAWNN(bbox=(0, 0, 400, 400))
-        self._awnn = MockupGeneralAWNN(bbox=(0, 0, 400, 400))
+        self._awnn: AWNN = self.awnn_type.value(bbox=(0, 0, 400, 400))
         self._left: Optional[ComponentTreeNode] = None
         self._right: Optional[ComponentTreeNode] = None
         self._parent: Optional[ComponentTreeNode] = None
@@ -202,67 +271,3 @@ class ComponentTreeNode:
         else:
             return "_" * (dashes - self._level)*4 + f"{dashes - self._level}-Node: \n {self._left.str_rep(dashes)} \n {self._right.str_rep(dashes)}"
         
-
-class AWNN(ABC):
-    def query_disk_intersection(self, disk: Disk):
-        pass
-
-    def add(self, item, point):
-        pass
-
-    def delete(self, item):
-        pass
-
-    def get_all_elements(self):
-        pass
-
-
-class QuadTreeUnitAWNN:
-    def __init__(self, bbox):
-        self._tree: QuadTree = QuadTree(bbox)
-
-    def query_disk_intersection(self, disk: Disk):
-        nearest = self._tree.nearest_neighbors(disk.center_point.as_tuple())
-        nearest = nearest[0] if nearest != [] else None
-        return nearest is not None and disk.center_point.distance(nearest.item.center_point) <= disk.radius + nearest.item.radius
-    
-    def add(self, item, point):
-        self._tree.add(item, point)
-
-    def delete(self, item):
-        self._tree.delete(item)
-
-    def get_all_elements(self):
-        return self._tree.get_all_elements()
-
-
-class MockupGeneralAWNN:
-    """
-    Mockup for a general AWNN data structure
-    Use multiple QuadTrees with different radii to store the elements.
-    """
-    def __init__(self, bbox, num_trees = 10):
-        self._intervals = [0, 1, 2, 4, 8, 16, 32, 64, 128, 256][:min(num_trees, 10)] + [400]
-        self._trees: list[QuadTree] = [QuadTree(bbox) for _ in range(num_trees)]
-
-    def query_disk_intersection(self, disk: Disk):
-        for i, tree in enumerate(self._trees):
-            result = tree.query((disk.center_point.x - disk.radius - self._intervals[i + 1],
-                                 disk.center_point.y - disk.radius - self._intervals[i + 1],
-                                 disk.center_point.x + disk.radius + self._intervals[i + 1],
-                                 disk.center_point.y + disk.radius + self._intervals[i + 1]))  # Could be improved if the quadtree finds the weighted nearest neighbor or returns the elements incrementally
-            for r in result:
-                if disk.center_point.distance(r.item.center_point) <= disk.radius + r.item.radius:
-                    return True
-        return False
-    
-    def add(self, item, point):
-        tree_index = min(len(self._intervals) - 1, int(math.log2(item.radius) + 1))
-        self._trees[tree_index].add(item, point)
-
-    def delete(self, item):
-        tree_index = min(len(self._intervals) - 1, int(math.log2(item.radius) + 1))
-        self._trees[tree_index].delete(item)
-
-    def get_all_elements(self):
-        return [element for tree in self._trees for element in tree.get_all_elements()]
