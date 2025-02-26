@@ -120,6 +120,7 @@ class DiskSetInstance(InstanceHandle[set[Disk]]):
         self._center_point_cache = None
         self._label = 0
         self._radius = 30
+        self._default_radius = 30
 
     def add_point(self, point: Point) -> bool | tuple[bool, PointReference]:
         if isinstance(point, PointReference):
@@ -165,8 +166,8 @@ class DiskSetInstance(InstanceHandle[set[Disk]]):
     def generate_random_points(self, max_x: float, max_y: float, number: int) -> list[Point]:
         disks: set[Disk] = set()
         for point in super().generate_random_points(0.9 * max_x, 0.9 * max_y, number):
-            # radius = np.random.uniform(0.02 * max_x, 0.1 * max_x)
-            radius = 30 if self._radius is None else self._radius
+            radius = np.random.uniform(0.02 * max_x, 0.1 * max_x)
+            radius = radius if self._radius is None else self._radius
             disks.add(Disk(point, radius, self._label))
             self._label += 1
         return DiskSetInstance.extract_points_from_raw_instance(disks)
@@ -412,7 +413,7 @@ class DiskConnectivityInstance(DiskSetInstance, InstanceHandle[DiskConnectivity]
             drawing_mode = DiskMode()
         super().__init__(drawing_mode)
         self._instance = DiskConnectivity()
-        self._disk_set = self._instance._disk_set
+        self._disk_set = self._instance._disk_set  #So it works with the DiskSetInstance methods
 
     @staticmethod
     def extract_points_from_raw_instance(instance: Union[set[Disk], DiskConnectivity]) -> list[PointReference]:

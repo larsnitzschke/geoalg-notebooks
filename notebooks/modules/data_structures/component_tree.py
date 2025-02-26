@@ -36,7 +36,7 @@ class AWNN(ABC):
         pass
 
 
-class QuadTreeUnitAWNN:
+class QuadTreeUnitAWNN(AWNN):
     def __init__(self, bbox):
         self._tree: QuadTree = QuadTree(bbox)
 
@@ -55,7 +55,7 @@ class QuadTreeUnitAWNN:
         return self._tree.get_all_elements()
 
 
-class MockupGeneralAWNN:
+class MockupGeneralAWNN(AWNN):
     """
     Mockup for a general AWNN data structure
     Use multiple QuadTrees with different radii to store the elements.
@@ -85,6 +85,7 @@ class MockupGeneralAWNN:
 
     def get_all_elements(self):
         return [element for tree in self._trees for element in tree.get_all_elements()]
+
 class ComponentTree:
     def __init__(self):
         self._root = ComponentTreeNode()

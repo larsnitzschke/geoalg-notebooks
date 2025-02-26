@@ -4,7 +4,7 @@ from typing import Callable, Generic, Iterable, Optional
 
 from ..geometry.core import Point
 from .drawing import CanvasDrawingHandle, Drawer, DrawingMode
-from .instances import Algorithm, I, InstanceHandle
+from .instances import Algorithm, I, DiskSetInstance, InstanceHandle
 
 from ipycanvas import MultiCanvas
 from ipywidgets import (
@@ -111,6 +111,21 @@ class VisualisationTool(Generic[I]):
             layout = Layout(width = self._DEFAULT_ITEM_WIDTH)
         )
 
+        self._random_radii_checkbox = None
+        if isinstance(self._instance, DiskSetInstance):
+            self._random_radii_checkbox = Checkbox(
+                value = False,
+                description = "Random radii",
+                indent = False,
+                layout = Layout(width = self._DEFAULT_ITEM_WIDTH)
+            )
+            def random_radii_checkbox_callback(value):
+                self.clear()
+                self._instance._radius = None if value else self._instance._default_radius
+                # change AWNN
+                
+            self._random_radii_checkbox.observe()
+
         self._random_message = HTML("<br>")
         def random_button_callback():
             self.clear()
@@ -172,7 +187,7 @@ class VisualisationTool(Generic[I]):
             align_content = "flex-start"
         )
         ui_grid = GridBox([
-            self._create_vbox("Canvas", (self._clear_button, self._random_button)),
+            self._create_vbox("Canvas", (self._clear_button, self._random_button) if self._random_radii_checkbox is None else (self._clear_button, self._random_radii_checkbox, self._random_button)),
             self._create_vbox("Options", (self._animation_checkbox, self._random_number_hbox)),
             self._create_vbox("", (self._animation_speed_hbox, self._random_message), right_aligned = True),
             self._create_vbox("Examples", self._example_buttons),
