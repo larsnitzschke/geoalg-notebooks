@@ -204,12 +204,13 @@ class DiskMode(PointsMode):
             drawer.main_canvas._canvas.font = "16px sans-serif"
             for point in points:
                 if not isinstance(point, PointReference) or len(point.container) == 1:
-                    drawer.main_canvas.draw_point(point, self._point_radius)
-                    drawer.main_canvas._canvas.save()
-                    drawer.main_canvas._canvas.translate(point.x+2, point.y-14)
-                    drawer.main_canvas._canvas.scale(1, -1)
-                    drawer.main_canvas._canvas.fill_text(point.label, 0, 0)
-                    drawer.main_canvas._canvas.restore()
+                    drawer.main_canvas.draw_point(point, self._point_radius, transparent=True)
+                    # Skip id label for solo points
+                    # drawer.main_canvas._canvas.save()
+                    # drawer.main_canvas._canvas.translate(point.x+2, point.y-14)
+                    # drawer.main_canvas._canvas.scale(1, -1)
+                    # drawer.main_canvas._canvas.fill_text(point.label, 0, 0)
+                    # drawer.main_canvas._canvas.restore()
                 elif len(point.container) != 2 or point.position != 0 or point.y != point.container[1].y:
                     raise Exception(f"Wrong format of the PointReference {point} for drawing disks.")
                 else:

@@ -201,6 +201,11 @@ class AWNNType(Enum):
 
 class ComponentTreeNode:
     awnn_type = AWNNType.QuadTreeUnitAWNN
+    
+    @classmethod
+    def set_awnn_type(cls, awnn_type: AWNNType):
+        cls.awnn_type = awnn_type
+
     def __init__(self):
         self._component: Optional[list[Disk]] = None
         self._awnn: AWNN = self.awnn_type.value(bbox=(0, 0, 400, 400))

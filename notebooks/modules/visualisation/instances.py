@@ -118,7 +118,6 @@ class DiskSetInstance(InstanceHandle[set[Disk]]):
         super().__init__(set(), drawing_mode)
         self._disk_set = self._instance
         self._center_point_cache = None
-        self._label = 0
         self._radius = 30
         self._default_radius = 30
 
@@ -127,30 +126,27 @@ class DiskSetInstance(InstanceHandle[set[Disk]]):
             if len(point.container) != 2 or point.position != 0 or point.y != point.container[1].y:
                 raise Exception(f"Wrong format of the PointReference {point} for adding disks.")
             self._disk_set.add(Disk(point.container[0], abs(point.container[0].x - point.container[1].x), point.label))
-            self._label += 1
             return True
         # isinstance: Point
         if self._center_point_cache is None and self._radius is None:
             self._center_point_cache = point
-            return True
+            return False, point
         elif self._center_point_cache == point:
             return False
         # center point is present and not the same as the new point
         radius = self._center_point_cache.distance(point) if self._radius is None else self._radius
         self._center_point_cache = self._center_point_cache if self._radius is None else point
-        disk = Disk(self._center_point_cache, radius, self._label)
-        point_ref = PointReference([self._center_point_cache, Point(self._center_point_cache.x + radius, self._center_point_cache.y)], 0, self._label)
-        self._label += 1
+        disk = Disk(self._center_point_cache, radius, self.size())  # size as an id label
+        point_ref = PointReference([self._center_point_cache, Point(self._center_point_cache.x + radius, self._center_point_cache.y)], 0, self.size())
         if disk in self._disk_set:
             return False
         self._disk_set.add(disk)
         self._center_point_cache = None
-        return False, point_ref
+        return True, point_ref
 
     def clear(self):
         self._instance.clear()
         self._center_point_cache = None
-        self._label = 0
 
     def size(self) -> int:
         return len(self._disk_set)
@@ -168,8 +164,7 @@ class DiskSetInstance(InstanceHandle[set[Disk]]):
         for point in super().generate_random_points(0.9 * max_x, 0.9 * max_y, number):
             radius = np.random.uniform(0.02 * max_x, 0.1 * max_x)
             radius = radius if self._radius is None else self._radius
-            disks.add(Disk(point, radius, self._label))
-            self._label += 1
+            disks.add(Disk(point, radius, len(disks)))
         return DiskSetInstance.extract_points_from_raw_instance(disks)
 
 

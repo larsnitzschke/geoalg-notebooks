@@ -5,6 +5,7 @@ from typing import Callable, Generic, Iterable, Optional
 from ..geometry.core import Point
 from .drawing import CanvasDrawingHandle, Drawer, DrawingMode
 from .instances import Algorithm, I, DiskSetInstance, InstanceHandle
+from ..data_structures import ComponentTreeNode, AWNNType
 
 from ipycanvas import MultiCanvas
 from ipywidgets import (
@@ -121,10 +122,11 @@ class VisualisationTool(Generic[I]):
             )
             def random_radii_checkbox_callback(value):
                 self.clear()
-                self._instance._radius = None if value else self._instance._default_radius
+                self._instance._radius = None if value['new'] else self._instance._default_radius
                 # change AWNN
+                ComponentTreeNode.set_awnn_type(AWNNType.MockupGeneralAWNN if value else AWNNType.QuadTreeUnitAWNN)
                 
-            self._random_radii_checkbox.observe()
+            self._random_radii_checkbox.observe(random_radii_checkbox_callback, "value")
 
         self._random_message = HTML("<br>")
         def random_button_callback():
@@ -236,6 +238,8 @@ class VisualisationTool(Generic[I]):
         self.clear_instance()
         self.clear_algorithm_drawings()
         self.clear_algorithm_messages()
+        self._tree_ui_1.value = ""
+        self._tree_ui_2.value = ""
 
     def clear_instance(self):
         self._instance.clear()
